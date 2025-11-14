@@ -17,7 +17,7 @@ datasource db {
 model Company {
   id        Int      @id @default(autoincrement())
   name      String
-  slugUrl   String   @unique
+  slugUrl   String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
