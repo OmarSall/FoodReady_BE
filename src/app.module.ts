@@ -3,9 +3,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import Joi from 'joi';
+import { CompaniesModule } from './companies/companies.module';
 
 @Module({
   imports: [
+    CompaniesModule,
     ConfigModule.forRoot({
       validationSchema: Joi.object({
         DATABASE_URL: Joi.string().required(),
