@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { SlugNotUniqueException } from './slug-not-unique.exception';
-import { Prisma } from '@prisma/client';
 import { PrismaError } from '../database/prisma-error.enum';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CompanyNotFoundException } from './company-not-found.exception';
@@ -31,7 +30,7 @@ export class CompaniesService {
     }
   }
 
-  getAll() {
+  async getAll() {
     return this.prismaService.company.findMany();
   }
 

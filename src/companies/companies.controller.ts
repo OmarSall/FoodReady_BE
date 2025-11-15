@@ -2,10 +2,15 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from 
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { CreateEmployeeDto } from '../employees/dto/create-employee.dto';
+import { EmployeesService } from '../employees/employees.service';
 
 @Controller('companies')
 export class CompaniesController {
-  constructor(private readonly companiesService: CompaniesService) {
+  constructor(
+    private readonly companiesService: CompaniesService,
+    private readonly employeesService: EmployeesService,
+  ) {
   }
 
   @Post()
@@ -13,6 +18,14 @@ export class CompaniesController {
     @Body() company: CreateCompanyDto,
   ) {
     return this.companiesService.create(company);
+  }
+
+  @Post(':id/employees')
+  createEmployeeForCompany(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() employee: CreateEmployeeDto,
+  ) {
+    return this.employeesService.createForCompany(id, employee);
   }
 
   @Get()
@@ -23,6 +36,11 @@ export class CompaniesController {
   @Get(':id')
   getById(@Param('id', ParseIntPipe) id: number) {
     return this.companiesService.getById(id);
+  }
+
+  @Get(':id/employees')
+  getEmployeesForCompany(@Param('id', ParseIntPipe) id: number) {
+    return this.employeesService.findByCompany(id);
   }
 
   @Patch(':id')
