@@ -7,6 +7,7 @@ import { EmailNotUniqueException } from './email-not-unique.exception';
 import { EmployeeNotFoundException } from './employee-not-found.exception';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { CompanyNotFoundException } from '../companies/company-not-found.exception';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class EmployeesService {
@@ -16,6 +17,7 @@ export class EmployeesService {
   async createForCompany(companyId: number, employeeDto: CreateEmployeeDto) {
     try {
       return await this.prismaService.$transaction(async (tx) => {
+        const hashedPassword = await bcrypt.hash(employeeDto.password, 10);
         const company = await tx.company.findUnique({
           where: {
             id: companyId,
@@ -30,6 +32,7 @@ export class EmployeesService {
           data: {
             name: employeeDto.name,
             email: employeeDto.email,
+            passwordHash: hashedPassword,
             position: employeeDto.position,
             companyId: companyId,
           },

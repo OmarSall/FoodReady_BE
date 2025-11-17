@@ -6,6 +6,9 @@ import { PrismaError } from '../database/prisma-error.enum';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CompanyNotFoundException } from './company-not-found.exception';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { RegisterCompanyDto } from './dto/register-company.dto';
+import { EmailNotUniqueException } from '../employees/email-not-unique.exception';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class CompaniesService {
@@ -25,6 +28,49 @@ export class CompaniesService {
         error.code === PrismaError.UniqueConstraintViolated
       ) {
         throw new SlugNotUniqueException();
+      }
+      throw error;
+    }
+  }
+
+  async registerCompany(companyRegistrationWithOwnerDto: RegisterCompanyDto) {
+    try {
+      const hashedPassword = await bcrypt.hash(companyRegistrationWithOwnerDto.password, 10);
+      return await this.prismaService.$transaction(async (tx) => {
+        const company = await tx.company.create({
+          data: {
+            name: companyRegistrationWithOwnerDto.companyName,
+            slugUrl: companyRegistrationWithOwnerDto.slugUrl,
+          }
+        });
+
+        const owner = await tx.employee.create({
+          data: {
+            email: companyRegistrationWithOwnerDto.email,
+            passwordHash: hashedPassword,
+            name: 'OWNER',
+            position: 'OWNER',
+            companyId: company.id,
+          },
+        });
+
+        return {
+          company,
+          owner,
+        };
+      });
+    } catch (error) {
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === PrismaError.UniqueConstraintViolated
+      ) {
+        const target = (error.meta?.target ?? []) as string[];
+        if (target.includes('slugUrl') || target.includes('slug')) {
+          throw new SlugNotUniqueException();
+        }
+        if (target.includes('email')) {
+          throw new EmailNotUniqueException();
+        }
       }
       throw error;
     }

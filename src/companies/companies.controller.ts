@@ -4,6 +4,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { CreateEmployeeDto } from '../employees/dto/create-employee.dto';
 import { EmployeesService } from '../employees/employees.service';
+import { RegisterCompanyDto } from './dto/register-company.dto';
 
 @Controller('companies')
 export class CompaniesController {
@@ -18,6 +19,11 @@ export class CompaniesController {
     @Body() company: CreateCompanyDto,
   ) {
     return this.companiesService.create(company);
+  }
+
+  @Post('register')
+  registerCompany(@Body() company: RegisterCompanyDto) {
+    return this.companiesService.registerCompany(company);
   }
 
   @Post(':id/employees')
