@@ -11,6 +11,7 @@ import { CompaniesModule } from './companies/companies.module';
     ConfigModule.forRoot({
       validationSchema: Joi.object({
         DATABASE_URL: Joi.string().required(),
+        FRONTEND_URL: Joi.string().required(),
       }),
     }),
   ],
