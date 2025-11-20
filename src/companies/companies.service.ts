@@ -29,7 +29,6 @@ export class CompaniesService {
         const company = await tx.company.create({
           data: {
             name: companyRegistrationWithOwnerDto.companyName,
-            slugUrl: companyRegistrationWithOwnerDto.slugUrl,
           }
         });
 
@@ -37,7 +36,7 @@ export class CompaniesService {
           data: {
             email: companyRegistrationWithOwnerDto.email,
             passwordHash: hashedPassword,
-            name: 'OWNER',
+            name: companyRegistrationWithOwnerDto.ownerName,
             position: 'OWNER',
             companyId: company.id,
           },
@@ -116,5 +115,4 @@ export class CompaniesService {
       throw error;
     }
   }
-
 }
