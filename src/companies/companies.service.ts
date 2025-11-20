@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
-import { SlugNotUniqueException } from './slug-not-unique.exception';
 import { PrismaError } from '../database/prisma-error.enum';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CompanyNotFoundException } from './company-not-found.exception';
@@ -18,19 +17,9 @@ export class CompaniesService {
   }
 
   async create(company: CreateCompanyDto) {
-    try {
-      return await this.prismaService.company.create({
+      return this.prismaService.company.create({
         data: company,
       });
-    } catch (error) {
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === PrismaError.UniqueConstraintViolated
-      ) {
-        throw new SlugNotUniqueException();
-      }
-      throw error;
-    }
   }
 
   async registerCompany(companyRegistrationWithOwnerDto: RegisterCompanyDto) {
@@ -65,9 +54,6 @@ export class CompaniesService {
         error.code === PrismaError.UniqueConstraintViolated
       ) {
         const target = (error.meta?.target ?? []) as string[];
-        if (target.includes('slugUrl') || target.includes('slug')) {
-          throw new SlugNotUniqueException();
-        }
         if (target.includes('email')) {
           throw new EmailNotUniqueException();
         }
@@ -109,12 +95,7 @@ export class CompaniesService {
       ) {
         throw new NotFoundException();
       }
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === PrismaError.UniqueConstraintViolated
-      ) {
-        throw new SlugNotUniqueException();
-      }
+
       throw error;
     }
   }
