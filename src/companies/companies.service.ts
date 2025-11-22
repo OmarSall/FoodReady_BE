@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
-import { SlugNotUniqueException } from './slug-not-unique.exception';
 import { PrismaError } from '../database/prisma-error.enum';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CompanyNotFoundException } from './company-not-found.exception';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { RegisterCompanyDto } from './dto/register-company.dto';
+import { EmailNotUniqueException } from '../employees/email-not-unique.exception';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class CompaniesService {
@@ -15,16 +17,45 @@ export class CompaniesService {
   }
 
   async create(company: CreateCompanyDto) {
-    try {
-      return await this.prismaService.company.create({
+      return this.prismaService.company.create({
         data: company,
+      });
+  }
+
+  async registerCompany(companyRegistrationWithOwnerDto: RegisterCompanyDto) {
+    try {
+      const hashedPassword = await bcrypt.hash(companyRegistrationWithOwnerDto.password, 10);
+      return await this.prismaService.$transaction(async (tx) => {
+        const company = await tx.company.create({
+          data: {
+            name: companyRegistrationWithOwnerDto.companyName,
+          }
+        });
+
+        const owner = await tx.employee.create({
+          data: {
+            email: companyRegistrationWithOwnerDto.email,
+            passwordHash: hashedPassword,
+            name: companyRegistrationWithOwnerDto.ownerName,
+            position: 'OWNER',
+            companyId: company.id,
+          },
+        });
+
+        return {
+          company,
+          owner,
+        };
       });
     } catch (error) {
       if (
         error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.UniqueConstraintViolated
       ) {
-        throw new SlugNotUniqueException();
+        const target = (error.meta?.target ?? []) as string[];
+        if (target.includes('email')) {
+          throw new EmailNotUniqueException();
+        }
       }
       throw error;
     }
@@ -63,12 +94,7 @@ export class CompaniesService {
       ) {
         throw new NotFoundException();
       }
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === PrismaError.UniqueConstraintViolated
-      ) {
-        throw new SlugNotUniqueException();
-      }
+
       throw error;
     }
   }
@@ -89,5 +115,4 @@ export class CompaniesService {
       throw error;
     }
   }
-
 }

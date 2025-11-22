@@ -11,4 +11,8 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsString()
   position?: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
 }
