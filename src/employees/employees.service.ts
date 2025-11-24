@@ -12,7 +12,7 @@ import { EmployeeEmailNotFoundException } from './employeeEmail-not-found.except
 
 @Injectable()
 export class EmployeesService {
-  constructor(private prismaService: PrismaService) {
+  constructor(private readonly prismaService: PrismaService) {
   }
 
   async createForCompany(companyId: number, employeeDto: CreateEmployeeDto) {
@@ -133,6 +133,7 @@ export class EmployeesService {
       ) {
         throw new EmployeeNotFoundException(id);
       }
+      throw error;
     }
   }
 }

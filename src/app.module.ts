@@ -6,6 +6,7 @@ import Joi from 'joi';
 import { CompaniesModule } from './companies/companies.module';
 import { EmployeesModule } from './employees/employees.module';
 import { AuthenticationModule } from './authentication/authentication.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AuthenticationModule } from './authentication/authentication.module';
         JWT_EXPIRATION_TIME: Joi.number().required(),
       }),
     }),
+    DatabaseModule,
     AuthenticationModule,
   ],
   controllers: [AppController],
