@@ -8,6 +8,7 @@ import { EmployeeNotFoundException } from './employee-not-found.exception';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { CompanyNotFoundException } from '../companies/company-not-found.exception';
 import * as bcrypt from 'bcrypt';
+import { EmployeeEmailNotFoundException } from './employeeEmail-not-found.exception';
 
 @Injectable()
 export class EmployeesService {
@@ -68,6 +69,18 @@ export class EmployeesService {
     });
     if (!employee) {
       throw new EmployeeNotFoundException(id);
+    }
+    return employee;
+  }
+
+  async findByEmail(email: string) {
+    const employee = await this.prismaService.employee.findUnique({
+      where: {
+        email,
+      },
+    });
+    if (!employee) {
+      throw new EmployeeEmailNotFoundException(email);
     }
     return employee;
   }

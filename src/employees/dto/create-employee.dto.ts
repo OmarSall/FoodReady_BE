@@ -1,10 +1,13 @@
-import { IsEmail, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateEmployeeDto {
   @IsString()
+  @IsNotEmpty()
   @MinLength(2)
   name: string;
 
+  @IsString()
+  @IsNotEmpty()
   @IsEmail()
   email:string;
 
@@ -13,6 +16,7 @@ export class CreateEmployeeDto {
   position?: string;
 
   @IsString()
+  @IsNotEmpty()
   @MinLength(8)
   password: string;
 }
