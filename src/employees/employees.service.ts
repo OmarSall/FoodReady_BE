@@ -9,6 +9,7 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { CompanyNotFoundException } from '../companies/company-not-found.exception';
 import * as bcrypt from 'bcrypt';
 import { EmployeeEmailNotFoundException } from './employeeEmail-not-found.exception';
+import { EmployeeRole } from '@prisma/client';
 
 @Injectable()
 export class EmployeesService {
@@ -34,7 +35,7 @@ export class EmployeesService {
             name: employeeDto.name,
             email: employeeDto.email,
             passwordHash: hashedPassword,
-            position: employeeDto.position,
+            position: employeeDto.position as EmployeeRole,
             companyId: companyId,
           },
         });

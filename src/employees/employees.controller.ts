@@ -16,6 +16,7 @@ import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import type { RequestWithUser } from '../authentication/request-with-user';
 import { JwtAuthenticationGuard } from '../authentication/jwt-authentication.guard';
+import { EmployeeRole } from '@prisma/client';
 
 @Controller('employees')
 export class EmployeesController {
@@ -30,7 +31,7 @@ export class EmployeesController {
   ) {
     const currentUser = request.user;
 
-    if (currentUser.position !== 'OWNER') {
+    if (currentUser.position !== EmployeeRole.OWNER) {
       throw new ForbiddenException('Only owner can create employees');
     }
     return this.employeesService.createForCompany(currentUser.companyId, createEmployeeDto);
