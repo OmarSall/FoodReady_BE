@@ -8,16 +8,18 @@ import { EmployeeNotFoundException } from './employee-not-found.exception';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { CompanyNotFoundException } from '../companies/company-not-found.exception';
 import * as bcrypt from 'bcrypt';
+import { EmployeeEmailNotFoundException } from './employeeEmail-not-found.exception';
+import { EmployeeRole } from '@prisma/client';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private prismaService: PrismaService) {
+  constructor(private readonly prismaService: PrismaService) {
   }
 
   async createForCompany(companyId: number, employeeDto: CreateEmployeeDto) {
     try {
       return await this.prismaService.$transaction(async (tx) => {
-        const hashedPassword = await bcrypt.hash(employeeDto.password, 10);
         const company = await tx.company.findUnique({
           where: {
             id: companyId,
@@ -28,13 +30,17 @@ export class EmployeesService {
           throw new CompanyNotFoundException(companyId);
         }
 
+        const inviteToken = randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 1000);
+
         return tx.employee.create({
           data: {
             name: employeeDto.name,
             email: employeeDto.email,
-            passwordHash: hashedPassword,
-            position: employeeDto.position,
+            position: employeeDto.position as EmployeeRole,
             companyId: companyId,
+            inviteToken: inviteToken,
+            inviteTokenExpires: expiresAt,
           },
         });
       });
@@ -68,6 +74,18 @@ export class EmployeesService {
     });
     if (!employee) {
       throw new EmployeeNotFoundException(id);
+    }
+    return employee;
+  }
+
+  async findByEmail(email: string) {
+    const employee = await this.prismaService.employee.findUnique({
+      where: {
+        email,
+      },
+    });
+    if (!employee) {
+      throw new EmployeeEmailNotFoundException(email);
     }
     return employee;
   }
@@ -120,6 +138,7 @@ export class EmployeesService {
       ) {
         throw new EmployeeNotFoundException(id);
       }
+      throw error;
     }
   }
 }
