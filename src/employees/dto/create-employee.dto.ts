@@ -14,9 +14,4 @@ export class CreateEmployeeDto {
 
   @IsEnum(EmployeeRole)
   position: EmployeeRole;
-
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(8)
-  password: string;
 }

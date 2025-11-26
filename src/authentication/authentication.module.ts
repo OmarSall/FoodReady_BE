@@ -5,11 +5,13 @@ import { EmployeesModule } from '../employees/employees.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './jwt.strategy';
+import { DatabaseModule } from '../database/database.module';
 
 @Module({
   imports: [
     EmployeesModule,
     ConfigModule,
+    DatabaseModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

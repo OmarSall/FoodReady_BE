@@ -6,12 +6,24 @@ import { JwtAuthenticationGuard } from './jwt-authentication.guard';
 import type { RequestWithUser } from './request-with-user';
 import { TransformPlainToInstance } from 'class-transformer';
 import { AuthenticationResponseDto } from './dto/authentication-response.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
 
 @Controller('authentication')
 export class AuthenticationController {
   constructor(
     private readonly authenticationService: AuthenticationService,
   ) {
+  }
+
+  @HttpCode(200)
+  @Post('set-password')
+  async setPassword(
+    @Body() body: SetPasswordDto
+  ): Promise<void> {
+    await this.authenticationService.setPasswordForInviteToken(
+      body.token,
+      body.password
+    );
   }
 
   @HttpCode(200)
