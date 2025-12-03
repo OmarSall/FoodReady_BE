@@ -8,6 +8,7 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 import { RegisterCompanyDto } from './dto/register-company.dto';
 import { EmailNotUniqueException } from '../employees/email-not-unique.exception';
 import * as bcrypt from 'bcrypt';
+import { EmployeeRole } from '@prisma/client';
 
 @Injectable()
 export class CompaniesService {
@@ -37,7 +38,7 @@ export class CompaniesService {
             email: companyRegistrationWithOwnerDto.email,
             passwordHash: hashedPassword,
             name: companyRegistrationWithOwnerDto.ownerName,
-            position: 'OWNER',
+            position: EmployeeRole.OWNER,
             companyId: company.id,
           },
         });
