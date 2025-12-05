@@ -19,6 +19,7 @@ model Company {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   employees Employee[]
+  Order     Order[]
 }
 
 model Employee {
@@ -33,9 +34,30 @@ model Employee {
   inviteTokenExpires DateTime?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
+  Order              Order[]
 }
 
 enum EmployeeRole {
   OWNER
   EMPLOYEE
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  title       String
+  description String?
+  status      OrderStatus @default(PENDING)
+  company     Company     @relation(fields: [companyId], references: [id])
+  companyId   Int
+  createdBy   Employee    @relation(fields: [createdById], references: [id])
+  createdById Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
