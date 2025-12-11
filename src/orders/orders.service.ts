@@ -33,7 +33,7 @@ export class OrdersService {
   async updateOrderStatusForEmployee(
     employee: Employee,
     orderId: number,
-    dto: UpdateOrderStatusDto
+    updateOrderData: UpdateOrderStatusDto
   ) {
     const orderResult = await this.prismaService.order.updateMany({
       where: {
@@ -41,12 +41,12 @@ export class OrdersService {
         companyId: employee.companyId,
       },
       data: {
-        status: dto.status as OrderStatus,
+        status: updateOrderData.status,
       },
     });
 
     if (orderResult.count === 0) {
-      throw new NotFoundException('Order not found or access denied');
+      throw new NotFoundException('Order not found for this employee.');
     }
 
     return this.prismaService.order.update({
@@ -54,7 +54,7 @@ export class OrdersService {
         id: orderId
       },
       data: {
-        status: dto.status as OrderStatus,
+        status: updateOrderData.status,
       }
     })
   }
