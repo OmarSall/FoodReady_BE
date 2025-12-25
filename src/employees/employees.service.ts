@@ -7,7 +7,6 @@ import { EmailNotUniqueException } from './email-not-unique.exception';
 import { EmployeeNotFoundException } from './employee-not-found.exception';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { CompanyNotFoundException } from '../companies/company-not-found.exception';
-import * as bcrypt from 'bcrypt';
 import { EmployeeEmailNotFoundException } from './employeeEmail-not-found.exception';
 import { EmployeeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
@@ -31,7 +30,7 @@ export class EmployeesService {
         }
 
         const inviteToken = randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
 
         return tx.employee.create({
           data: {
@@ -41,6 +40,13 @@ export class EmployeesService {
             companyId: companyId,
             inviteToken: inviteToken,
             inviteTokenExpires: expiresAt,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            position: true,
+            companyId: true,
           },
         });
       });
