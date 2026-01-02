@@ -77,15 +77,15 @@ export class EmployeesService {
     });
   }
 
-  async findById(id: number) {
-    const employee = await this.prismaService.employee.findUnique({
+  async findByIdForCompany(companyId: number, employeeId: number) {
+    const employee = await this.prismaService.employee.findFirst({
       where: {
-        id,
+        id: employeeId, companyId
       },
       select: this.safeEmployeeSelect,
     });
     if (!employee) {
-      throw new EmployeeNotFoundException(id);
+      throw new EmployeeNotFoundException(employeeId);
     }
     return employee;
   }
@@ -111,19 +111,34 @@ export class EmployeesService {
     })
   }
 
-  async update(id: number, employee: UpdateEmployeeDto) {
+  async updateForCompany(
+    companyId: number,
+    employeeId: number,
+    employee: UpdateEmployeeDto
+  ) {
+    const existingEmployee = await this.prismaService.employee.findFirst({
+      where: {
+        id: employeeId,
+        companyId,
+      },
+    });
+
+    if (!existingEmployee) {
+      throw new EmployeeNotFoundException(employeeId);
+    }
     try {
       return await this.prismaService.employee.update({
         where: {
-          id,
+          id: employeeId,
         },
         data: employee,
+        select: this.safeEmployeeSelect,
       });
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.RecordDoesNotExist
       ) {
-        throw new EmployeeNotFoundException(id);
+        throw new EmployeeNotFoundException(employeeId);
       }
       if (
         error instanceof PrismaClientKnownRequestError &&
@@ -135,18 +150,28 @@ export class EmployeesService {
     }
   }
 
-  async delete(id: number) {
+  async deleteForCompany(companyId: number, employeeId: number) {
+    const existingEmployee = await this.prismaService.employee.findFirst({
+      where: {
+        id: employeeId,
+        companyId,
+      },
+    });
+
+    if (!existingEmployee) {
+      throw new EmployeeNotFoundException(employeeId);
+    }
     try {
       return await this.prismaService.employee.delete({
         where: {
-          id,
+          id: employeeId,
         },
       });
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.RecordDoesNotExist
       ) {
-        throw new EmployeeNotFoundException(id);
+        throw new EmployeeNotFoundException(employeeId);
       }
       throw error;
     }

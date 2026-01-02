@@ -17,12 +17,6 @@ export class CompaniesService {
   ) {
   }
 
-  async create(company: CreateCompanyDto) {
-      return this.prismaService.company.create({
-        data: company,
-      });
-  }
-
   async registerCompany(companyRegistrationWithOwnerDto: RegisterCompanyDto) {
     try {
       const hashedPassword = await bcrypt.hash(companyRegistrationWithOwnerDto.password, 10);
