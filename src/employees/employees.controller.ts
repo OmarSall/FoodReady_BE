@@ -45,8 +45,14 @@ export class EmployeesController {
 
   @UseGuards(JwtAuthenticationGuard)
   @Get(':id')
-  findById(@Param('id', ParseIntPipe) id: number) {
-    return this.employeesService.findById(id);
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: RequestWithUser,
+  ) {
+    return this.employeesService.findByIdForCompany(
+      request.user.companyId,
+      id
+    );
   }
 
   @UseGuards(JwtAuthenticationGuard)
@@ -54,13 +60,24 @@ export class EmployeesController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() employee: UpdateEmployeeDto,
+    @Req() request: RequestWithUser
   ) {
-    return this.employeesService.update(id, employee);
+    return this.employeesService.updateForCompany(
+      request.user.companyId,
+      id,
+      employee
+    );
   }
 
   @UseGuards(JwtAuthenticationGuard)
   @Delete(':id')
-  delete(@Param('id', ParseIntPipe) id: number) {
-    return this.employeesService.delete(id);
+  delete(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: RequestWithUser
+    ) {
+    return this.employeesService.deleteForCompany(
+      request.user.companyId,
+      id,
+    );
   }
 }
