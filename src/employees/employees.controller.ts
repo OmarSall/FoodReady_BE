@@ -37,16 +37,19 @@ export class EmployeesController {
     return this.employeesService.createForCompany(currentUser.companyId, createEmployeeDto);
   }
 
+  @UseGuards(JwtAuthenticationGuard)
   @Get()
-  findAll() {
-    return this.employeesService.findAll();
+  findAll(@Req() request: RequestWithUser) {
+    return this.employeesService.findAllForCompany(request.user.companyId);
   }
 
+  @UseGuards(JwtAuthenticationGuard)
   @Get(':id')
   findById(@Param('id', ParseIntPipe) id: number) {
     return this.employeesService.findById(id);
   }
 
+  @UseGuards(JwtAuthenticationGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -55,6 +58,7 @@ export class EmployeesController {
     return this.employeesService.update(id, employee);
   }
 
+  @UseGuards(JwtAuthenticationGuard)
   @Delete(':id')
   delete(@Param('id', ParseIntPipe) id: number) {
     return this.employeesService.delete(id);
