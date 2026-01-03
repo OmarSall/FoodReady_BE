@@ -12,7 +12,7 @@ async function bootstrap() {
   app.enableCors({
     origin: configService.get('FRONTEND_URL'),
     credentials: true,
-  })
+  });
   await app.listen(process.env.PORT ?? 3000);
 }
 

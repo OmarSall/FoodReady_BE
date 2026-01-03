@@ -26,5 +26,4 @@ import { DatabaseModule } from '../database/database.module';
   controllers: [AuthenticationController],
   providers: [AuthenticationService, JwtStrategy],
 })
-export class AuthenticationModule {
-}
+export class AuthenticationModule {}

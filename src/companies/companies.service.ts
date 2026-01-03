@@ -12,19 +12,19 @@ import { EmployeeRole } from '@prisma/client';
 
 @Injectable()
 export class CompaniesService {
-  constructor(
-    private readonly prismaService: PrismaService,
-  ) {
-  }
+  constructor(private readonly prismaService: PrismaService) {}
 
   async registerCompany(companyRegistrationWithOwnerDto: RegisterCompanyDto) {
     try {
-      const hashedPassword = await bcrypt.hash(companyRegistrationWithOwnerDto.password, 10);
+      const hashedPassword = await bcrypt.hash(
+        companyRegistrationWithOwnerDto.password,
+        10,
+      );
       return await this.prismaService.$transaction(async (tx) => {
         const company = await tx.company.create({
           data: {
             name: companyRegistrationWithOwnerDto.companyName,
-          }
+          },
         });
 
         const owner = await tx.employee.create({
@@ -77,14 +77,15 @@ export class CompaniesService {
       return await this.prismaService.company.update({
         data: {
           ...company,
-          id: undefined
-      },
+          id: undefined,
+        },
         where: {
           id,
-        }
-      })
+        },
+      });
     } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError &&
+      if (
+        error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.RecordDoesNotExist
       ) {
         throw new NotFoundException();
@@ -99,13 +100,14 @@ export class CompaniesService {
       return await this.prismaService.company.delete({
         where: {
           id,
-        }
+        },
       });
     } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError &&
+      if (
+        error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.RecordDoesNotExist
       ) {
-        throw new NotFoundException()
+        throw new NotFoundException();
       }
       throw error;
     }

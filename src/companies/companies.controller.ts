@@ -18,15 +18,14 @@ import { RegisterCompanyDto } from './dto/register-company.dto';
 import { RequestWithUser } from '../authentication/request-with-user';
 import { JwtAuthenticationGuard } from '../authentication/jwt-authentication.guard';
 import { EmployeeRole } from '@prisma/client';
-import type { Request } from "express";
+import type { Request } from 'express';
 
 @Controller('companies')
 export class CompaniesController {
   constructor(
     private readonly companiesService: CompaniesService,
     private readonly employeesService: EmployeesService,
-  ) {
-  }
+  ) {}
 
   @Post('register')
   registerCompany(@Body() company: RegisterCompanyDto) {
@@ -50,8 +49,8 @@ export class CompaniesController {
   getEmployeesForCompany(
     @Param('id', ParseIntPipe) id: number,
     @Req() request: Request,
-    ) {
-    const user = (request as unknown as RequestWithUser).user
+  ) {
+    const user = (request as unknown as RequestWithUser).user;
     if (user.companyId !== id) {
       throw new ForbiddenException('Access denied');
     }
@@ -64,7 +63,7 @@ export class CompaniesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() company: UpdateCompanyDto,
     @Req() request: Request,
-    ){
+  ) {
     const user = (request as unknown as RequestWithUser).user;
 
     if (user.companyId !== id) {
@@ -79,10 +78,7 @@ export class CompaniesController {
 
   @UseGuards(JwtAuthenticationGuard)
   @Delete(':id')
-  async delete(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() request: Request,
-    ) {
+  async delete(@Param('id', ParseIntPipe) id: number, @Req() request: Request) {
     const user = (request as unknown as RequestWithUser).user;
 
     if (user.companyId !== id) {

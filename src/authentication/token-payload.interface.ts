@@ -1,3 +1,3 @@
 export interface TokenPayload {
-  employeeId: number
+  employeeId: number;
 }

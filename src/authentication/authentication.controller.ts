@@ -1,4 +1,13 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthenticationService } from './authentication.service';
 import { LogInDto } from './dto/log-in.dto';
 import type { Response } from 'express';
@@ -10,19 +19,14 @@ import { SetPasswordDto } from './dto/set-password.dto';
 
 @Controller('authentication')
 export class AuthenticationController {
-  constructor(
-    private readonly authenticationService: AuthenticationService,
-  ) {
-  }
+  constructor(private readonly authenticationService: AuthenticationService) {}
 
   @HttpCode(200)
   @Post('set-password')
-  async setPassword(
-    @Body() body: SetPasswordDto
-  ): Promise<void> {
+  async setPassword(@Body() body: SetPasswordDto): Promise<void> {
     await this.authenticationService.setPasswordForInviteToken(
       body.token,
-      body.password
+      body.password,
     );
   }
 
@@ -36,7 +40,9 @@ export class AuthenticationController {
     const employee =
       await this.authenticationService.getAuthenticatedEmployee(logInData);
 
-    const cookie = this.authenticationService.getCookieWithJwtToken(employee.id);
+    const cookie = this.authenticationService.getCookieWithJwtToken(
+      employee.id,
+    );
     response.setHeader('Set-Cookie', cookie);
 
     return employee;
@@ -53,8 +59,8 @@ export class AuthenticationController {
   @Get()
   @TransformPlainToInstance(AuthenticationResponseDto)
   async authenticate(
-    @Req() request: RequestWithUser
-  ):Promise<AuthenticationResponseDto>  {
+    @Req() request: RequestWithUser,
+  ): Promise<AuthenticationResponseDto> {
     return request.user;
   }
 }

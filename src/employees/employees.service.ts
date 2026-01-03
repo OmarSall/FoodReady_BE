@@ -13,8 +13,7 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prismaService: PrismaService) {
-  }
+  constructor(private readonly prismaService: PrismaService) {}
   private readonly safeEmployeeSelect = {
     id: true,
     name: true,
@@ -72,7 +71,7 @@ export class EmployeesService {
 
   async findAllForCompany(companyId: number) {
     return this.prismaService.employee.findMany({
-      where: {companyId},
+      where: { companyId },
       select: this.safeEmployeeSelect,
     });
   }
@@ -80,13 +79,27 @@ export class EmployeesService {
   async findByIdForCompany(companyId: number, employeeId: number) {
     const employee = await this.prismaService.employee.findFirst({
       where: {
-        id: employeeId, companyId
+        id: employeeId,
+        companyId,
       },
       select: this.safeEmployeeSelect,
     });
     if (!employee) {
       throw new EmployeeNotFoundException(employeeId);
     }
+    return employee;
+  }
+
+  // auth-only method - used by JwtStrategy
+  async findById(id: number) {
+    const employee = await this.prismaService.employee.findUnique({
+      where: { id },
+    });
+
+    if (!employee) {
+      throw new EmployeeNotFoundException(id);
+    }
+
     return employee;
   }
 
@@ -108,13 +121,13 @@ export class EmployeesService {
         companyId: companyId,
       },
       select: this.safeEmployeeSelect,
-    })
+    });
   }
 
   async updateForCompany(
     companyId: number,
     employeeId: number,
-    employee: UpdateEmployeeDto
+    employee: UpdateEmployeeDto,
   ) {
     const existingEmployee = await this.prismaService.employee.findFirst({
       where: {
@@ -135,7 +148,8 @@ export class EmployeesService {
         select: this.safeEmployeeSelect,
       });
     } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError &&
+      if (
+        error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.RecordDoesNotExist
       ) {
         throw new EmployeeNotFoundException(employeeId);
@@ -168,7 +182,8 @@ export class EmployeesService {
         },
       });
     } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError &&
+      if (
+        error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.RecordDoesNotExist
       ) {
         throw new EmployeeNotFoundException(employeeId);
