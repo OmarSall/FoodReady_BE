@@ -15,17 +15,17 @@ import { CompaniesService } from './companies.service';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { EmployeesService } from '../employees/employees.service';
 import { RegisterCompanyDto } from './dto/register-company.dto';
-import { RequestWithUser } from '../authentication/request-with-user';
+import type { RequestWithUser } from '../authentication/request-with-user';
 import { JwtAuthenticationGuard } from '../authentication/jwt-authentication.guard';
 import { EmployeeRole } from '@prisma/client';
-import type { Request } from 'express';
 
 @Controller('companies')
 export class CompaniesController {
   constructor(
     private readonly companiesService: CompaniesService,
     private readonly employeesService: EmployeesService,
-  ) {}
+  ) {
+  }
 
   @Post('register')
   registerCompany(@Body() company: RegisterCompanyDto) {
@@ -33,61 +33,49 @@ export class CompaniesController {
   }
 
   @UseGuards(JwtAuthenticationGuard)
-  @Get()
-  getAll() {
-    return this.companiesService.getAll();
+  @Get('me')
+  getMyCompany(@Req() request: RequestWithUser) {
+    return this.companiesService.getById(request.user.companyId);
   }
 
   @UseGuards(JwtAuthenticationGuard)
-  @Get(':id')
-  getById(@Param('id', ParseIntPipe) id: number) {
-    return this.companiesService.getById(id);
-  }
-
-  @UseGuards(JwtAuthenticationGuard)
-  @Get(':id/employees')
-  getEmployeesForCompany(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() request: Request,
+  @Get('me/employees')
+  getMyCompanyEmployees(
+    @Req() request: RequestWithUser,
   ) {
-    const user = (request as unknown as RequestWithUser).user;
-    if (user.companyId !== id) {
-      throw new ForbiddenException('Access denied');
+    const user = request.user;
+
+    if (user.position !== EmployeeRole.OWNER) {
+      throw new ForbiddenException('Only owner can list employees');
     }
-    return this.employeesService.findByCompany(id);
+    return this.employeesService.findByCompany(user.companyId);
   }
 
   @UseGuards(JwtAuthenticationGuard)
-  @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
+  @Patch('me')
+  updateMyCompany(
     @Body() company: UpdateCompanyDto,
-    @Req() request: Request,
+    @Req() request: RequestWithUser,
   ) {
-    const user = (request as unknown as RequestWithUser).user;
+    const user = request.user;
 
-    if (user.companyId !== id) {
-      throw new ForbiddenException('Access denied');
-    }
     if (user.position !== EmployeeRole.OWNER) {
       throw new ForbiddenException('Only owner can update company');
     }
 
-    return this.companiesService.update(id, company);
+    return this.companiesService.update(user.companyId, company);
   }
 
   @UseGuards(JwtAuthenticationGuard)
-  @Delete(':id')
-  async delete(@Param('id', ParseIntPipe) id: number, @Req() request: Request) {
-    const user = (request as unknown as RequestWithUser).user;
+  @Delete('me')
+  delete(
+    @Req() request: RequestWithUser) {
+    const user = request.user;
 
-    if (user.companyId !== id) {
-      throw new ForbiddenException('Access denied');
-    }
     if (user.position !== EmployeeRole.OWNER) {
       throw new ForbiddenException('Only owner can delete company');
     }
 
-    return await this.companiesService.delete(id);
+    return this.companiesService.delete(user.companyId);
   }
 }

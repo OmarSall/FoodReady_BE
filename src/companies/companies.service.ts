@@ -56,10 +56,6 @@ export class CompaniesService {
     }
   }
 
-  async getAll() {
-    return this.prismaService.company.findMany();
-  }
-
   async getById(id: number) {
     const company = await this.prismaService.company.findUnique({
       where: {
@@ -88,7 +84,7 @@ export class CompaniesService {
         error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.RecordDoesNotExist
       ) {
-        throw new NotFoundException();
+        throw new CompanyNotFoundException(id);
       }
 
       throw error;
@@ -107,7 +103,7 @@ export class CompaniesService {
         error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.RecordDoesNotExist
       ) {
-        throw new NotFoundException();
+        throw new CompanyNotFoundException(id);
       }
       throw error;
     }
