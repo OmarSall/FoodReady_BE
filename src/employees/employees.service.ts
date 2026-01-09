@@ -15,6 +15,18 @@ import { randomBytes } from 'crypto';
 export class EmployeesService {
   constructor(private readonly prismaService: PrismaService) {
   }
+  // Fields that are safe to expose via API responses.
+  // This prevents leaking sensitive data such as passwordHash or
+  // invite tokens.
+  private readonly safeEmployeeSelect = {
+    id: true,
+    name: true,
+    email: true,
+    position: true,
+    companyId: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
 
   async createForCompany(companyId: number, employeeDto: CreateEmployeeDto) {
     try {
@@ -60,12 +72,13 @@ export class EmployeesService {
       throw error;
     }
   }
-
-  async findAll() {
+  // Fields that are safe to expose via API responses
+  // This prevents leaking sensitive data such as passwordHash or
+  // invite tokens
+  async findAllForCompany(companyId: number) {
     return this.prismaService.employee.findMany({
-      include: {
-        company: true,
-      },
+      where: {companyId},
+      select: this.safeEmployeeSelect,
     });
   }
 
@@ -74,9 +87,7 @@ export class EmployeesService {
       where: {
         id,
       },
-      include: {
-        company: true,
-      },
+      select: this.safeEmployeeSelect,
     });
     if (!employee) {
       throw new EmployeeNotFoundException(id);
@@ -101,9 +112,7 @@ export class EmployeesService {
       where: {
         companyId: companyId,
       },
-      include: {
-        company: true,
-      }
+      select: this.safeEmployeeSelect,
     })
   }
 
