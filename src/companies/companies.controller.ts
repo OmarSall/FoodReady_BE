@@ -43,12 +43,12 @@ export class CompaniesController {
   getMyCompanyEmployees(
     @Req() request: RequestWithUser,
   ) {
-    const user = request.user;
+    const { user } = request;
 
     if (user.position !== EmployeeRole.OWNER) {
       throw new ForbiddenException('Only owner can list employees');
     }
-    return this.employeesService.findByCompany(user.companyId);
+    return this.employeesService.findAllForCompany(user.companyId);
   }
 
   @UseGuards(JwtAuthenticationGuard)
@@ -57,7 +57,7 @@ export class CompaniesController {
     @Body() company: UpdateCompanyDto,
     @Req() request: RequestWithUser,
   ) {
-    const user = request.user;
+    const { user } = request;
 
     if (user.position !== EmployeeRole.OWNER) {
       throw new ForbiddenException('Only owner can update company');
@@ -70,7 +70,7 @@ export class CompaniesController {
   @Delete('me')
   delete(
     @Req() request: RequestWithUser) {
-    const user = request.user;
+    const { user } = request;
 
     if (user.position !== EmployeeRole.OWNER) {
       throw new ForbiddenException('Only owner can delete company');

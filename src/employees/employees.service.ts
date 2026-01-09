@@ -13,7 +13,9 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) {
+  }
+
   private readonly safeEmployeeSelect = {
     id: true,
     name: true,
@@ -115,45 +117,20 @@ export class EmployeesService {
     return employee;
   }
 
-  async findByCompany(companyId: number) {
-    return this.prismaService.employee.findMany({
-      where: {
-        companyId: companyId,
-      },
-      select: this.safeEmployeeSelect,
-    });
-  }
-
-  async updateForCompany(
+  private async updateEmployeeScoped(
     companyId: number,
     employeeId: number,
     employee: UpdateEmployeeDto,
   ) {
-    const existingEmployee = await this.prismaService.employee.findFirst({
-      where: {
-        id: employeeId,
-        companyId,
-      },
-    });
-
-    if (!existingEmployee) {
-      throw new EmployeeNotFoundException(employeeId);
-    }
     try {
-      return await this.prismaService.employee.update({
+      return await this.prismaService.employee.updateMany({
         where: {
           id: employeeId,
+          companyId,
         },
         data: employee,
-        select: this.safeEmployeeSelect,
       });
     } catch (error) {
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === PrismaError.RecordDoesNotExist
-      ) {
-        throw new EmployeeNotFoundException(employeeId);
-      }
       if (
         error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.UniqueConstraintViolated
@@ -164,31 +141,31 @@ export class EmployeesService {
     }
   }
 
+  async updateForCompany(
+    companyId: number,
+    employeeId: number,
+    employee: UpdateEmployeeDto,
+  ) {
+    const updateManyResult = await this.updateEmployeeScoped(companyId, employeeId, employee);
+
+    if (updateManyResult.count === 0) {
+      throw new EmployeeNotFoundException(employeeId);
+    }
+
+    return this.findByIdForCompany(companyId, employeeId);
+  }
+
   async deleteForCompany(companyId: number, employeeId: number) {
-    const existingEmployee = await this.prismaService.employee.findFirst({
+    const deleteManyResult = await this.prismaService.employee.deleteMany({
       where: {
         id: employeeId,
         companyId,
       },
     });
 
-    if (!existingEmployee) {
+    if (deleteManyResult.count === 0) {
       throw new EmployeeNotFoundException(employeeId);
     }
-    try {
-      return await this.prismaService.employee.delete({
-        where: {
-          id: employeeId,
-        },
-      });
-    } catch (error) {
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === PrismaError.RecordDoesNotExist
-      ) {
-        throw new EmployeeNotFoundException(employeeId);
-      }
-      throw error;
-    }
+    return { deleted: true };
   }
 }
