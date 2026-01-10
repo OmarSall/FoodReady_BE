@@ -2,7 +2,12 @@ import { ConfigService } from '@nestjs/config';
 import { EmployeesService } from '../employees/employees.service';
 import { JwtService } from '@nestjs/jwt';
 import { Employee } from '@prisma/client';
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { WrongCredentialsException } from './wrong-credentials.exception';
 import * as bcrypt from 'bcrypt';
 import { LogInDto } from './dto/log-in.dto';
@@ -16,8 +21,7 @@ export class AuthenticationService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly prismaService: PrismaService,
-  ) {
-  }
+  ) {}
 
   private async getEmployeeByEmail(email: string): Promise<Employee> {
     try {
@@ -47,8 +51,8 @@ export class AuthenticationService {
   private isInviteTokenValid(employee: Employee | null, now: Date): boolean {
     return Boolean(
       employee &&
-      employee.inviteTokenExpires &&
-      employee.inviteTokenExpires > now,
+        employee.inviteTokenExpires &&
+        employee.inviteTokenExpires > now,
     );
   }
 
@@ -72,7 +76,7 @@ export class AuthenticationService {
       },
     });
 
-    this.assertValidInviteEmployee(employee, now)
+    this.assertValidInviteEmployee(employee, now);
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     return this.prismaService.employee.update({

@@ -1,6 +1,16 @@
 import { OrdersService } from './orders.service';
 import { JwtAuthenticationGuard } from '../authentication/jwt-authentication.guard';
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { RequestWithUser } from '../authentication/request-with-user';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -18,7 +28,8 @@ export class OrdersController {
   @Post()
   async createOrder(
     @Req() request: RequestWithUser,
-    @Body() body: CreateOrderDto) {
+    @Body() body: CreateOrderDto,
+  ) {
     return this.ordersService.createOrderForEmployee(request.user, body);
   }
 
@@ -32,6 +43,6 @@ export class OrdersController {
       request.user,
       id,
       body,
-    )
+    );
   }
 }

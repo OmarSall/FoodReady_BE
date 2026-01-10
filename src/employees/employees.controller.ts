@@ -20,21 +20,23 @@ import { EmployeeRole } from '@prisma/client';
 
 @Controller('employees')
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) {
-  }
+  constructor(private readonly employeesService: EmployeesService) {}
 
   @UseGuards(JwtAuthenticationGuard)
   @Post()
   async createEmployee(
     @Body() createEmployeeDto: CreateEmployeeDto,
-    @Req() request: RequestWithUser
+    @Req() request: RequestWithUser,
   ) {
     const currentUser = request.user;
 
     if (currentUser.position !== EmployeeRole.OWNER) {
       throw new ForbiddenException('Only owner can create employees');
     }
-    return this.employeesService.createForCompany(currentUser.companyId, createEmployeeDto);
+    return this.employeesService.createForCompany(
+      currentUser.companyId,
+      createEmployeeDto,
+    );
   }
 
   @UseGuards(JwtAuthenticationGuard)
@@ -45,8 +47,11 @@ export class EmployeesController {
 
   @UseGuards(JwtAuthenticationGuard)
   @Get(':id')
-  findById(@Param('id', ParseIntPipe) id: number) {
-    return this.employeesService.findById(id);
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: RequestWithUser,
+  ) {
+    return this.employeesService.findByIdForCompany(request.user.companyId, id);
   }
 
   @UseGuards(JwtAuthenticationGuard)
@@ -54,13 +59,21 @@ export class EmployeesController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() employee: UpdateEmployeeDto,
+    @Req() request: RequestWithUser,
   ) {
-    return this.employeesService.update(id, employee);
+    return this.employeesService.updateForCompany(
+      request.user.companyId,
+      id,
+      employee,
+    );
   }
 
   @UseGuards(JwtAuthenticationGuard)
   @Delete(':id')
-  delete(@Param('id', ParseIntPipe) id: number) {
-    return this.employeesService.delete(id);
+  delete(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: RequestWithUser,
+  ) {
+    return this.employeesService.deleteForCompany(request.user.companyId, id);
   }
 }

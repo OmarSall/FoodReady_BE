@@ -1,4 +1,11 @@
-import { IsEmail, IsEnum, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { CanBeUndefined } from '../../utilities/can-be-undefined';
 import { EmployeeRole } from '@prisma/client';
 
@@ -10,7 +17,7 @@ export class UpdateEmployeeDto {
 
   @IsEmail()
   @CanBeUndefined()
-  email?:string;
+  email?: string;
 
   @IsEnum(EmployeeRole)
   @CanBeUndefined()

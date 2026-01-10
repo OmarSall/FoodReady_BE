@@ -15,6 +15,7 @@ import { randomBytes } from 'crypto';
 export class EmployeesService {
   constructor(private readonly prismaService: PrismaService) {
   }
+
   // Fields that are safe to expose via API responses.
   // This prevents leaking sensitive data such as passwordHash or
   // invite tokens.
@@ -77,21 +78,35 @@ export class EmployeesService {
   // invite tokens
   async findAllForCompany(companyId: number) {
     return this.prismaService.employee.findMany({
-      where: {companyId},
+      where: { companyId },
       select: this.safeEmployeeSelect,
     });
   }
 
-  async findById(id: number) {
-    const employee = await this.prismaService.employee.findUnique({
+  async findByIdForCompany(companyId: number, employeeId: number) {
+    const employee = await this.prismaService.employee.findFirst({
       where: {
-        id,
+        id: employeeId,
+        companyId,
       },
       select: this.safeEmployeeSelect,
     });
     if (!employee) {
+      throw new EmployeeNotFoundException(employeeId);
+    }
+    return employee;
+  }
+
+  // auth-only method - used by JwtStrategy
+  async findById(id: number) {
+    const employee = await this.prismaService.employee.findUnique({
+      where: { id },
+    });
+
+    if (!employee) {
       throw new EmployeeNotFoundException(id);
     }
+
     return employee;
   }
 
@@ -107,29 +122,20 @@ export class EmployeesService {
     return employee;
   }
 
-  async findByCompany(companyId: number) {
-    return this.prismaService.employee.findMany({
-      where: {
-        companyId: companyId,
-      },
-      select: this.safeEmployeeSelect,
-    })
-  }
-
-  async update(id: number, employee: UpdateEmployeeDto) {
+  private async updateEmployeeScoped(
+    companyId: number,
+    employeeId: number,
+    employee: UpdateEmployeeDto,
+  ) {
     try {
-      return await this.prismaService.employee.update({
+      return await this.prismaService.employee.updateMany({
         where: {
-          id,
+          id: employeeId,
+          companyId,
         },
         data: employee,
       });
     } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError &&
-        error.code === PrismaError.RecordDoesNotExist
-      ) {
-        throw new EmployeeNotFoundException(id);
-      }
       if (
         error instanceof PrismaClientKnownRequestError &&
         error.code === PrismaError.UniqueConstraintViolated
@@ -140,20 +146,31 @@ export class EmployeesService {
     }
   }
 
-  async delete(id: number) {
-    try {
-      return await this.prismaService.employee.delete({
-        where: {
-          id,
-        },
-      });
-    } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError &&
-        error.code === PrismaError.RecordDoesNotExist
-      ) {
-        throw new EmployeeNotFoundException(id);
-      }
-      throw error;
+  async updateForCompany(
+    companyId: number,
+    employeeId: number,
+    employee: UpdateEmployeeDto,
+  ) {
+    const updateManyResult = await this.updateEmployeeScoped(companyId, employeeId, employee);
+
+    if (updateManyResult.count === 0) {
+      throw new EmployeeNotFoundException(employeeId);
     }
+
+    return this.findByIdForCompany(companyId, employeeId);
+  }
+
+  async deleteForCompany(companyId: number, employeeId: number) {
+    const deleteManyResult = await this.prismaService.employee.deleteMany({
+      where: {
+        id: employeeId,
+        companyId,
+      },
+    });
+
+    if (deleteManyResult.count === 0) {
+      throw new EmployeeNotFoundException(employeeId);
+    }
+    return { deleted: true };
   }
 }

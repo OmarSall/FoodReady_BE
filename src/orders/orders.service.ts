@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { Employee, OrderStatus } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -6,7 +10,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 @Injectable()
 export class OrdersService {
-  constructor (private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) {}
 
   async getOrdersForEmployee(employee: Employee) {
     return this.prismaService.order.findMany({
@@ -33,7 +37,7 @@ export class OrdersService {
   async updateOrderStatusForEmployee(
     employee: Employee,
     orderId: number,
-    updateOrderData: UpdateOrderStatusDto
+    updateOrderData: UpdateOrderStatusDto,
   ) {
     const orderResult = await this.prismaService.order.updateMany({
       where: {
@@ -51,11 +55,11 @@ export class OrdersService {
 
     return this.prismaService.order.update({
       where: {
-        id: orderId
+        id: orderId,
       },
       data: {
         status: updateOrderData.status,
-      }
-    })
+      },
+    });
   }
 }
