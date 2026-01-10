@@ -16,6 +16,9 @@ export class EmployeesService {
   constructor(private readonly prismaService: PrismaService) {
   }
 
+  // Fields that are safe to expose via API responses.
+  // This prevents leaking sensitive data such as passwordHash or
+  // invite tokens.
   private readonly safeEmployeeSelect = {
     id: true,
     name: true,
@@ -70,7 +73,9 @@ export class EmployeesService {
       throw error;
     }
   }
-
+  // Fields that are safe to expose via API responses
+  // This prevents leaking sensitive data such as passwordHash or
+  // invite tokens
   async findAllForCompany(companyId: number) {
     return this.prismaService.employee.findMany({
       where: { companyId },
