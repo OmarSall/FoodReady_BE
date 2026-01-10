@@ -24,8 +24,7 @@ export class CompaniesController {
   constructor(
     private readonly companiesService: CompaniesService,
     private readonly employeesService: EmployeesService,
-  ) {
-  }
+  ) {}
 
   @Post('register')
   registerCompany(@Body() company: RegisterCompanyDto) {
@@ -40,9 +39,7 @@ export class CompaniesController {
 
   @UseGuards(JwtAuthenticationGuard)
   @Get('me/employees')
-  getMyCompanyEmployees(
-    @Req() request: RequestWithUser,
-  ) {
+  getMyCompanyEmployees(@Req() request: RequestWithUser) {
     const { user } = request;
 
     if (user.position !== EmployeeRole.OWNER) {
@@ -68,8 +65,7 @@ export class CompaniesController {
 
   @UseGuards(JwtAuthenticationGuard)
   @Delete('me')
-  delete(
-    @Req() request: RequestWithUser) {
+  delete(@Req() request: RequestWithUser) {
     const { user } = request;
 
     if (user.position !== EmployeeRole.OWNER) {

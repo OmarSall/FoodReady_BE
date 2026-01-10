@@ -13,8 +13,7 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prismaService: PrismaService) {
-  }
+  constructor(private readonly prismaService: PrismaService) {}
 
   // Fields that are safe to expose via API responses.
   // This prevents leaking sensitive data such as passwordHash or
@@ -73,9 +72,7 @@ export class EmployeesService {
       throw error;
     }
   }
-  // Fields that are safe to expose via API responses
-  // This prevents leaking sensitive data such as passwordHash or
-  // invite tokens
+
   async findAllForCompany(companyId: number) {
     return this.prismaService.employee.findMany({
       where: { companyId },
@@ -151,7 +148,11 @@ export class EmployeesService {
     employeeId: number,
     employee: UpdateEmployeeDto,
   ) {
-    const updateManyResult = await this.updateEmployeeScoped(companyId, employeeId, employee);
+    const updateManyResult = await this.updateEmployeeScoped(
+      companyId,
+      employeeId,
+      employee,
+    );
 
     if (updateManyResult.count === 0) {
       throw new EmployeeNotFoundException(employeeId);
