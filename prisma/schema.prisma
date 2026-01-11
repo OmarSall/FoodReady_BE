@@ -50,16 +50,16 @@ enum OrderStatus {
 }
 
 model Order {
-  id          Int         @id @default(autoincrement())
-  title       String
-  description String?
-  status      OrderStatus @default(PENDING)
+  id                  Int         @id @default(autoincrement())
+  title               String
+  description         String?
+  status              OrderStatus @default(PENDING)
   // Public token used in QR/link for cutomers. Must be unique and unguessable
-  trackingId  String      @unique
-  company     Company     @relation(fields: [companyId], references: [id])
-  companyId   Int
-  createdBy   Employee    @relation(fields: [createdById], references: [id])
-  createdById Int
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  trackingId          String      @unique
+  company             Company     @relation(fields: [companyId], references: [id])
+  companyId           Int
+  createdByEmployee   Employee    @relation(fields: [createdByEmployeeId], references: [id])
+  createdByEmployeeId Int
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
 }

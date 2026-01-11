@@ -8,6 +8,7 @@ import { EmployeesModule } from './employees/employees.module';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { DatabaseModule } from './database/database.module';
 import { OrdersModule } from './orders/orders.module';
+import { OrderTrackingModule } from './order-tracking/order-tracking.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { OrdersModule } from './orders/orders.module';
     DatabaseModule,
     AuthenticationModule,
     OrdersModule,
+    OrderTrackingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
