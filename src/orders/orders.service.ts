@@ -1,12 +1,12 @@
 import {
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { Employee, OrderStatus } from '@prisma/client';
+import { Employee } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class OrdersService {
@@ -29,7 +29,9 @@ export class OrdersService {
         title: dto.title,
         description: dto.description,
         companyId: employee.companyId,
-        createdById: employee.id,
+        createdByEmployeeId: employee.id,
+        // Used by customer-facing OrderTrackingPage via QR/link
+        trackingId: randomUUID(),
       },
     });
   }
@@ -53,13 +55,17 @@ export class OrdersService {
       throw new NotFoundException('Order not found for this employee.');
     }
 
-    return this.prismaService.order.update({
+    const order = await this.prismaService.order.findFirst({
       where: {
         id: orderId,
-      },
-      data: {
-        status: updateOrderData.status,
+        companyId: employee.companyId,
       },
     });
+
+    if (!order) {
+      throw new NotFoundException('Order not found for this employee.');
+    }
+
+    return order;
   }
 }
