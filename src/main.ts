@@ -9,9 +9,16 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  const allowedOrigins = (configService.get<string>("FRONTEND_URL") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: configService.get('FRONTEND_URL'),
+    origin: allowedOrigins,
     credentials: true,
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
   });
   await app.listen(process.env.PORT ?? 3000);
 }
