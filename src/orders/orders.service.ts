@@ -7,10 +7,15 @@ import { Employee } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { randomUUID } from 'crypto';
+import { OrderTrackingEventsService } from '../order-tracking/order-tracking-events.service';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly orderTrackingEventsService: OrderTrackingEventsService,
+  ) {
+  }
 
   async getOrdersForEmployee(employee: Employee) {
     return this.prismaService.order.findMany({
@@ -64,6 +69,15 @@ export class OrdersService {
 
     if (!order) {
       throw new NotFoundException('Order not found for this employee.');
+    }
+
+    this.orderTrackingEventsService.emit(order.trackingId, {
+      status: order.status,
+      updatedAt: order.updatedAt.toISOString(),
+    });
+
+    if (order.status === 'COMPLETED' || order.status === 'CANCELLED') {
+      this.orderTrackingEventsService.complete(order.trackingId);
     }
 
     return order;
