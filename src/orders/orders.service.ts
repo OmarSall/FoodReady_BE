@@ -46,19 +46,6 @@ export class OrdersService {
     orderId: number,
     updateOrderData: UpdateOrderStatusDto,
   ) {
-    const orderResult = await this.prismaService.order.updateMany({
-      where: {
-        id: orderId,
-        companyId: employee.companyId,
-      },
-      data: {
-        status: updateOrderData.status,
-      },
-    });
-
-    if (orderResult.count === 0) {
-      throw new NotFoundException('Order not found for this employee.');
-    }
 
     const order = await this.prismaService.order.findFirst({
       where: {
@@ -71,15 +58,20 @@ export class OrdersService {
       throw new NotFoundException('Order not found for this employee.');
     }
 
-    this.orderTrackingEventsService.emit(order.trackingId, {
-      status: order.status,
-      updatedAt: order.updatedAt.toISOString(),
+    const updated = await this.prismaService.order.update({
+      where: { id: orderId },
+      data: { status: updateOrderData.status },
+    })
+
+    this.orderTrackingEventsService.emit(updated.trackingId, {
+      status: updated.status,
+      updatedAt: updated.updatedAt.toISOString(),
     });
 
-    if (order.status === 'COMPLETED' || order.status === 'CANCELLED') {
-      this.orderTrackingEventsService.complete(order.trackingId);
+    if (updated.status === 'COMPLETED' || updated.status === 'CANCELLED') {
+      this.orderTrackingEventsService.complete(updated.trackingId);
     }
 
-    return order;
+    return updated;
   }
 }
