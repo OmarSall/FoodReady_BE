@@ -2,10 +2,11 @@ import { Controller, Get, Param, Sse } from '@nestjs/common';
 import { OrderTrackingService } from './order-tracking.service';
 import { OrderTrackingEventPayload, OrderTrackingEventsService } from './order-tracking-events.service';
 import { map, Observable } from 'rxjs';
+import { ORDER_TRACKING_SSE_EVENT, type OrderTrackingSseEventName } from './order-tracking-events';
 
 type SseEvent<T> = {
   data: T;
-  event?: string;
+  event: OrderTrackingSseEventName;
   id?: string;
 };
 
@@ -29,7 +30,7 @@ export class OrderTrackingController {
 
     return this.events.observe(trackingId).pipe(
       map((payload) => ({
-        event: "order-status",
+        event: ORDER_TRACKING_SSE_EVENT.ORDER_STATUS,
         data: payload,
       }))
     )
