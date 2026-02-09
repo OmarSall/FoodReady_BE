@@ -3,7 +3,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { Employee } from '@prisma/client';
+import { Employee, OrderStatus } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { randomUUID } from 'crypto';
@@ -68,7 +68,7 @@ export class OrdersService {
       updatedAt: updated.updatedAt.toISOString(),
     });
 
-    if (updated.status === 'COMPLETED' || updated.status === 'CANCELLED') {
+    if (updated.status === OrderStatus.COMPLETED || updated.status === OrderStatus.CANCELLED) {
       this.orderTrackingEventsService.complete(updated.trackingId);
     }
 
