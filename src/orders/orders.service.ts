@@ -3,14 +3,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { Employee } from '@prisma/client';
+import { Employee, OrderStatus } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { randomUUID } from 'crypto';
+import { OrderTrackingEventsService } from '../order-tracking/order-tracking-events.service';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly orderTrackingEventsService: OrderTrackingEventsService,
+  ) {
+  }
 
   async getOrdersForEmployee(employee: Employee) {
     return this.prismaService.order.findMany({
@@ -41,19 +46,6 @@ export class OrdersService {
     orderId: number,
     updateOrderData: UpdateOrderStatusDto,
   ) {
-    const orderResult = await this.prismaService.order.updateMany({
-      where: {
-        id: orderId,
-        companyId: employee.companyId,
-      },
-      data: {
-        status: updateOrderData.status,
-      },
-    });
-
-    if (orderResult.count === 0) {
-      throw new NotFoundException('Order not found for this employee.');
-    }
 
     const order = await this.prismaService.order.findFirst({
       where: {
@@ -66,6 +58,20 @@ export class OrdersService {
       throw new NotFoundException('Order not found for this employee.');
     }
 
-    return order;
+    const updated = await this.prismaService.order.update({
+      where: { id: orderId },
+      data: { status: updateOrderData.status },
+    })
+
+    this.orderTrackingEventsService.emit(updated.trackingId, {
+      status: updated.status,
+      updatedAt: updated.updatedAt.toISOString(),
+    });
+
+    if (updated.status === OrderStatus.COMPLETED || updated.status === OrderStatus.CANCELLED) {
+      this.orderTrackingEventsService.complete(updated.trackingId);
+    }
+
+    return updated;
   }
 }
