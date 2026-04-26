@@ -1,4 +1,4 @@
-# FoodReady — Backend
+# FoodReady - Backend
 
 Backend API for the **FoodReady** platform, built with **NestJS** and **Prisma**.  
 The application provides authentication, order management, and a public order-tracking flow designed to support both internal users and end customers.
