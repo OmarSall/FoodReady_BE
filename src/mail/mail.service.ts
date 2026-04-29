@@ -12,7 +12,8 @@ export class MailService {
   constructor(
     @Inject('MAIL_TRANSPORT') private readonly transport: any,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+  }
 
   async sendInvitation(options: SendInvitationOptions): Promise<void> {
     const from = this.configService.getOrThrow<string>('SMTP_FROM');
@@ -29,7 +30,9 @@ export class MailService {
 
   private buildInvitationLink(inviteToken: string): string {
     const frontendUrl =
-      this.configService.getOrThrow<string>('FRONTEND_URL');
+      this.configService.getOrThrow<string>('FRONTEND_URL')
+        .split(',')[0]
+        .trim();
     return `${frontendUrl}/set-password?token=${inviteToken}`;
   }
 
