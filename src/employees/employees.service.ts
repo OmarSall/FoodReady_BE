@@ -1,5 +1,5 @@
 import { PrismaService } from '../database/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaError } from '../database/prisma-error.enum';
@@ -10,10 +10,17 @@ import { CompanyNotFoundException } from '../companies/company-not-found.excepti
 import { EmployeeEmailNotFoundException } from './employeeEmail-not-found.exception';
 import { EmployeeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prismaService: PrismaService) {}
+  private readonly logger = new Logger(EmployeesService.name);
+
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly mailService: MailService,
+  ) {
+  }
 
   // Fields that are safe to expose via API responses.
   // This prevents leaking sensitive data such as passwordHash or
@@ -30,7 +37,10 @@ export class EmployeesService {
 
   async createForCompany(companyId: number, employeeDto: CreateEmployeeDto) {
     try {
-      return await this.prismaService.$transaction(async (tx) => {
+      const inviteToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+
+      const employee = await this.prismaService.$transaction(async (tx) => {
         const company = await tx.company.findUnique({
           where: {
             id: companyId,
@@ -40,9 +50,6 @@ export class EmployeesService {
         if (!company) {
           throw new CompanyNotFoundException(companyId);
         }
-
-        const inviteToken = randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
 
         return tx.employee.create({
           data: {
@@ -62,6 +69,18 @@ export class EmployeesService {
           },
         });
       });
+
+      this.mailService
+        .sendInvitation({
+          to: employeeDto.email,
+          employeeName: employeeDto.name,
+          inviteToken: inviteToken,
+        })
+        .catch((error: unknown) => {
+          this.logger.error('Failed to send invitation email', error);
+        });
+
+      return employee;
     } catch (error) {
       if (
         error instanceof PrismaClientKnownRequestError &&
