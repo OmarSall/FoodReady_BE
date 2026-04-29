@@ -70,15 +70,11 @@ export class EmployeesService {
         });
       });
 
-      this.mailService
-        .sendInvitation({
-          to: employeeDto.email,
-          employeeName: employeeDto.name,
-          inviteToken: inviteToken,
-        })
-        .catch((error: unknown) => {
-          this.logger.error('Failed to send invitation email', error);
-        });
+      this.sendInvitationEmail(
+        employeeDto.email,
+        employeeDto.name,
+        inviteToken,
+      );
 
       return employee;
     } catch (error) {
@@ -192,5 +188,21 @@ export class EmployeesService {
       throw new EmployeeNotFoundException(employeeId);
     }
     return { deleted: true };
+  }
+
+  private sendInvitationEmail(
+    email: string,
+    name: string,
+    inviteToken: string,
+  ): void {
+    this.mailService
+      .sendInvitation({
+        to: email,
+        employeeName: name,
+        inviteToken: inviteToken,
+      })
+      .catch((error: unknown) => {
+        this.logger.error('Failed to send invitation email', error);
+      })
   }
 }
