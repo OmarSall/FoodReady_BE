@@ -38,6 +38,17 @@ describe('EmployeesService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
+    mockPrismaService.$transaction.mockImplementation(async (fn: any) => {
+      return fn({
+        company: {
+          findUnique: jest.fn().mockResolvedValue(mockCompany),
+        },
+        employee: {
+          create: jest.fn().mockResolvedValue(mockEmployee),
+        },
+      });
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EmployeesService,
@@ -57,17 +68,6 @@ describe('EmployeesService', () => {
 
   describe('createForCompany', () => {
     it('should call mailService.sendInvitation with correct data after creating employee', async () => {
-      mockPrismaService.$transaction.mockImplementation(async (fn: any) => {
-        return fn({
-          company: {
-            findUnique: jest.fn().mockResolvedValue(mockCompany),
-          },
-          employee: {
-            create: jest.fn().mockResolvedValue(mockEmployee),
-          },
-        });
-      });
-
       mockMailService.sendInvitation.mockResolvedValue(undefined);
 
       await employeesService.createForCompany(1, {
@@ -86,17 +86,6 @@ describe('EmployeesService', () => {
     });
 
     it('should still resolve if mailService.sendInvitation throws', async () => {
-      mockPrismaService.$transaction.mockImplementation(async (fn: any) => {
-        return fn({
-          company: {
-            findUnique: jest.fn().mockResolvedValue(mockCompany),
-          },
-          employee: {
-            create: jest.fn().mockResolvedValue(mockEmployee),
-          },
-        });
-      });
-
       mockMailService.sendInvitation.mockRejectedValue(
         new Error('SMTP connection failed'),
       );
