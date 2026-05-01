@@ -1,64 +1,41 @@
 # PRD: Employee Email Invitation
 
+---
+
+# Part 1 - Non-Technical
+
 ## 1. Background & Problem Statement
 
-When a company owner creates a new employee account, the system generates an
-`inviteToken` and stores it in the database. Currently, there is no automated
-way to deliver this token to the employee - an administrator must manually
-retrieve the token from the database, construct the invitation link by hand,
-and send it via an external tool (e.g. Postman).
+When a company owner creates a new employee account, there is currently no
+automated way to notify the employee. An administrator must manually access
+the database, copy a one-time token, and set the employee's password on their
+behalf - meaning the admin knows the employee's password, which is a security
+concern.
 
-**Current flow (manual):**
-1. Owner creates an employee via `POST /employees`
-2. Admin opens pgAdmin and manually copies the `inviteToken` from the database
-3. Admin opens Postman and sends `POST /authentication/set-password` with the token and a temporary password - on behalf of the employee
-4. Admin communicates the temporary password to the employee through an external channel.
+**Current flow (manual — admin-only workaround):**
+1. Owner creates an employee via the Employees page
+2. Admin opens the database and manually copies the invite token
+3. Admin sets the employee's password on their behalf using an external tool
+4. Admin communicates the temporary password to the employee through a
+   separate channel (e.g. chat, email)
 
 **Target flow (automated):**
-1. Owner creates an employee via the `EmployeesPage` form
+1. Owner creates an employee via the Employees page
 2. System automatically sends an invitation email to the employee
-3. Employee clicks the link → lands on `/set-password?token=xxx`
-4. Employee sets their password → account is active → redirect to `/login`
+3. Employee clicks the link and lands on a password setup page
+4. Employee sets their own password and can immediately log in
 
 ---
 
 ## 2. Goal
 
-Eliminate the manual step of delivering the invitation token. The entire
-onboarding flow should be fully automatic and require zero administrator
-intervention.
+Eliminate all manual steps from the employee onboarding flow. The process
+should be fully automatic and require zero administrator intervention, while
+ensuring the employee is the only person who knows their own password.
 
 ---
 
-## 3. Scope
-
-### In scope
-
-**Backend:**
-- New `MailModule` with `MailService` (Nodemailer + SMTP)
-- `EmployeesService.createForCompany` sends an invitation email after
-  successful employee creation (fire-and-forget)
-- New SMTP environment variables added to Joi validation schema
-- New `SET_PASSWORD` entry in `API_ENDPOINTS`
-
-**Frontend (`apps/customer-portal`):**
-- New page: `SetPasswordPage` + `SetPasswordForm`
-- New route: `/set-password` (publicly accessible, outside `GuestRoute`
-  and `ProtectedRoute`)
-- New API function: `setPassword` in `authenticationApi.ts`
-- New constants in `ROUTES` and `API_ENDPOINTS`
-- `LoginForm` updated to display a success message after invite activation
-
-### Out of scope
-- Resend invitation endpoint
-- Email open / click tracking
-- Styled HTML email templates (MJML, React Email)
-- Queue-based sending (BullMQ) for delivery resilience
-- Password change flow for already-authenticated employees
-
----
-
-## 4. User Stories
+## 3. User Stories
 
 > As a company owner,
 > when I create a new employee via the form,
@@ -69,31 +46,67 @@ intervention.
 > As a new employee,
 > when I click the invitation link from my email,
 > I want to see a password setup form,
-> so that I can create a password and log into the system.
+> so that I can set my own password and log into the system independently.
 
 ---
 
-## 5. Acceptance Criteria
+## 4. Acceptance Criteria
 
 | # | Criterion |
 |---|-----------|
-| AC-1 | After `POST /employees` succeeds, an invitation email is sent to the new employee's address |
-| AC-2 | The email contains a link in the format: `{FRONTEND_URL}/set-password?token={inviteToken}` |
-| AC-3 | A mail delivery failure does **not** roll back the employee record — the invite token remains valid and the error is logged |
-| AC-4 | The email does not contain sensitive data (e.g. `passwordHash`, full Employee object) |
-| AC-5 | All SMTP variables are validated by Joi at application startup |
-| AC-6 | Navigating to `/set-password?token=xxx` renders the password setup form |
-| AC-7 | After a successful password setup, the user is redirected to `/login` with a success message |
-| AC-8 | An expired or invalid token returns HTTP 400 — the frontend displays a clear error message |
-| AC-9 | The `/set-password` route is accessible without authentication (outside `GuestRoute`) |
-| AC-10 | `MailService` is unit-testable with a mocked Nodemailer transport |
-| AC-11 | `EmployeesService.createForCompany` is unit-testable with a mocked `MailService` |
+| AC-1 | After an employee is created, an invitation email is automatically sent to their address |
+| AC-2 | The email contains a secure, one-time link for the employee to set their password |
+| AC-3 | If the email fails to send, the employee account is still created — the link remains valid and the error is recorded internally |
+| AC-4 | The email does not contain any sensitive information |
+| AC-5 | The password setup page is publicly accessible via the invitation link |
+| AC-6 | After setting their password, the employee is redirected to the login page with a confirmation message |
+| AC-7 | An invalid or expired invitation link shows a clear error message |
 
 ---
 
-## 6. Technical Design
+## 5. Out of Scope
 
-### 6.1 Backend — new `MailModule`
+- Resending invitation emails
+- Tracking email opens or clicks
+- Styled / branded HTML email templates
+- Password change flow for already-authenticated employees
+
+---
+
+## 6. Follow-up Opportunities
+
+- Resend invitation endpoint for expired links
+- Branded HTML email template
+- Resilient email delivery via a message queue
+
+---
+
+---
+
+# Part 2 — Technical
+
+## 7. Scope
+
+### Backend
+- New `MailModule` with `MailService` (Nodemailer + SMTP)
+- `EmployeesService.createForCompany` sends an invitation email after
+  successful employee creation (fire-and-forget)
+- New SMTP environment variables added to Joi validation schema
+- New `SET_PASSWORD` entry in `API_ENDPOINTS`
+
+### Frontend (`apps/customer-portal`)
+- New page: `SetPasswordPage` + `SetPasswordForm`
+- New route: `/set-password` (publicly accessible, outside `GuestRoute`
+  and `ProtectedRoute`)
+- New API function: `setPassword` in `authenticationApi.ts`
+- New constants in `ROUTES` and `API_ENDPOINTS`
+- `LoginForm` updated to display a success message after invite activation
+
+---
+
+## 8. Technical Design
+
+### 8.1 Backend — new `MailModule`
 
 ```
 src/
@@ -118,6 +131,9 @@ Builds the invitation link:
 {FRONTEND_URL}/set-password?token={inviteToken}
 ```
 
+`FRONTEND_URL` may contain multiple comma-separated origins (for CORS) —
+only the first value is used for the invitation link.
+
 Sends an HTML email with a plain-text fallback via Nodemailer SMTP.
 The transport is injected as a provider token so it can be swapped for a
 mock in tests.
@@ -127,26 +143,39 @@ mock in tests.
 
 ---
 
-### 6.2 Backend — updated `EmployeesService`
+### 8.2 Backend — updated `EmployeesService`
 
-After the Prisma `$transaction` in `createForCompany` completes successfully:
+`inviteToken` is generated before the Prisma `$transaction` so it is
+available both inside the transaction and for the mail call after it:
 
 ```ts
-this.mailService
-  .sendInvitation({
-    to: employeeDto.email,
-    employeeName: employeeDto.name,
-    inviteToken,
-  })
-  .catch((error) => {
-    this.logger.error('Failed to send invitation email', error);
-  });
-// No await — fire-and-forget, errors do not propagate to the caller
+const inviteToken = randomBytes(32).toString('hex');
+
+const employee = await this.prismaService.$transaction(async (tx) => {
+  // ...create employee with inviteToken
+});
+
+this.sendInvitationEmail(employeeDto.email, employeeDto.name, inviteToken);
+
+return employee;
+```
+
+Fire-and-forget pattern — no `await`, errors are caught and logged via
+`Logger.error`, and do not propagate to the caller:
+
+```ts
+private sendInvitationEmail(email: string, name: string, inviteToken: string): void {
+  this.mailService
+    .sendInvitation({ to: email, employeeName: name, inviteToken })
+    .catch((error: unknown) => {
+      this.logger.error('Failed to send invitation email', error);
+    });
+}
 ```
 
 ---
 
-### 6.3 Backend — new environment variables
+### 8.3 Backend — new environment variables
 
 Add to the Joi validation schema in `AppModule`:
 
@@ -160,19 +189,18 @@ Add to the Joi validation schema in `AppModule`:
 
 ---
 
-### 6.4 Frontend — new `/set-password` route
+### 8.4 Frontend — new `/set-password` route
 
 Added in `App.tsx` **outside** both `GuestRoute` and `ProtectedRoute`
 so the route is accessible regardless of authentication state:
 
 ```tsx
 <Route path={ROUTES.SET_PASSWORD} element={<SetPasswordPage />} />
-<Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
 ```
 
 ---
 
-### 6.5 Frontend — new constants
+### 8.5 Frontend — new constants
 
 **`routes.ts`:**
 ```ts
@@ -185,13 +213,13 @@ AUTHENTICATION: {
   LOGIN: '/authentication/log-in',
   LOGOUT: '/authentication/log-out',
   CURRENT_USER: '/authentication',
-  SET_PASSWORD: '/authentication/set-password',  // new
+  SET_PASSWORD: '/authentication/set-password',
 }
 ```
 
 ---
 
-### 6.6 Frontend — new API function
+### 8.6 Frontend — new API function
 
 **`authenticationApi.ts`:**
 ```ts
@@ -209,21 +237,24 @@ export function setPassword(payload: SetPasswordPayload): Promise<void> {
 
 ---
 
-### 6.7 Frontend — new components
+### 8.7 Frontend — new components
 
 ```
 src/components/Auth/
   SetPasswordPage/
     SetPasswordPage.tsx
     SetPasswordPage.module.css
+    useInviteToken.ts
     SetPasswordForm/
       SetPasswordForm.tsx
       SetPasswordForm.module.css
 ```
 
+**`useInviteToken`** — custom hook that reads the token from URL search
+params and redirects to `/` if missing.
+
 **`SetPasswordPage`** responsibilities:
-- Reads `token` from `useSearchParams()`
-- If token is missing → redirect to `/` immediately
+- Uses `useInviteToken` to get the token
 - Calls `setPassword({ token, password })`
 - On success → `navigate(ROUTES.LOGIN, { state: { inviteSuccess: true } })`
 - On API error → displays error message inside the form
@@ -233,15 +264,13 @@ src/components/Auth/
 - `confirmPassword` — must match `password`
 - Reuses existing `FormInput` component
 - Styled identically to `LoginForm` / `CompanyOwnerForm`
-  (dark theme, green gradient button, CSS Modules)
 
 **`LoginForm`** — minor update:
-- If `location.state?.inviteSuccess === true` → display banner:
-  `"Password set successfully. You can now log in."`
+- If `location.state?.inviteSuccess === true` → display success banner
 
 ---
 
-## 7. TDD Plan — Red → Green → Refactor
+## 9. TDD Plan — Red → Green → Refactor
 
 ### Cycle 1 — `MailService.sendInvitation` (BE)
 
@@ -262,7 +291,7 @@ add plain-text fallback alongside the HTML body.
 
 ### Cycle 2 — `EmployeesService.createForCompany` with mail (BE)
 
-**Red:** Write / extend a spec that:
+**Red:** Write a spec that:
 - Mocks `PrismaService` and `MailService`
 - After successful `createForCompany`, asserts `mailService.sendInvitation`
   was called with the correct `to`, `employeeName`, and a non-empty `inviteToken`
@@ -271,17 +300,18 @@ add plain-text fallback alongside the HTML body.
 
 **Green:** Inject `MailService`, add fire-and-forget call with `Logger.error`.
 
-**Refactor:** Extract error logging into a private method.
+**Refactor:** Extract email sending logic into a private method.
 
 ---
 
-### Cycle 3 — `SetPasswordPage` (FE, React Testing Library)
+### Cycle 3 — `SetPasswordPage` (FE, Vitest + React Testing Library)
 
 **Red:** Write a spec that:
 - Renders `SetPasswordPage` with a token in the URL (`?token=abc123`)
 - Fills in `password` and `confirmPassword`
 - Asserts `setPassword` API was called with `{ token: 'abc123', password }`
 - Asserts redirect to `/login` after success
+- Asserts error message is displayed when API rejects
 
 **Green:** Implement `SetPasswordPage` and `SetPasswordForm`.
 
@@ -289,37 +319,29 @@ add plain-text fallback alongside the HTML body.
 
 ---
 
-## 8. File Checklist
+## 10. File Checklist
 
 ### Backend
-- [ ] `src/mail/mail.module.ts`
-- [ ] `src/mail/mail.service.ts`
-- [ ] `src/mail/mail.service.spec.ts`
-- [ ] `src/employees/employees.module.ts` — import `MailModule`
-- [ ] `src/employees/employees.service.ts` — inject `MailService`, fire-and-forget
-- [ ] `src/employees/employees.service.spec.ts` — new / updated tests
-- [ ] `src/app.module.ts` — Joi schema updated with SMTP vars
-- [ ] `.env.example` — SMTP vars added
+- [x] `src/mail/mail.module.ts`
+- [x] `src/mail/mail.service.ts`
+- [x] `src/mail/mail.service.spec.ts`
+- [x] `src/employees/employees.module.ts` — import `MailModule`
+- [x] `src/employees/employees.service.ts` — inject `MailService`, fire-and-forget
+- [x] `src/employees/employees.service.spec.ts`
+- [x] `src/app.module.ts` — Joi schema updated with SMTP vars
+- [x] `.env.example` — SMTP vars added
 
 ### Frontend
-- [ ] `src/constants/routes.ts` — `SET_PASSWORD`
-- [ ] `src/constants/api.ts` — `SET_PASSWORD` endpoint
-- [ ] `src/api/authenticationApi.ts` — `setPassword()`
-- [ ] `src/components/Auth/SetPasswordPage/SetPasswordPage.tsx`
-- [ ] `src/components/Auth/SetPasswordPage/SetPasswordPage.module.css`
-- [ ] `src/components/Auth/SetPasswordPage/SetPasswordForm/SetPasswordForm.tsx`
-- [ ] `src/components/Auth/SetPasswordPage/SetPasswordForm/SetPasswordForm.module.css`
-- [ ] `src/App.tsx` — new `/set-password` route
-- [ ] `src/components/Auth/LoginPage/LoginForm/LoginForm.tsx` — invite success message
+- [x] `src/constants/routes.ts` — `SET_PASSWORD`
+- [x] `src/constants/api.ts` — `SET_PASSWORD` endpoint
+- [x] `src/api/authenticationApi.ts` — `setPassword()`
+- [x] `src/components/Auth/SetPasswordPage/SetPasswordPage.tsx`
+- [x] `src/components/Auth/SetPasswordPage/SetPasswordPage.module.css`
+- [x] `src/components/Auth/SetPasswordPage/useInviteToken.ts`
+- [x] `src/components/Auth/SetPasswordPage/SetPasswordForm/SetPasswordForm.tsx`
+- [x] `src/components/Auth/SetPasswordPage/SetPasswordForm/SetPasswordForm.module.css`
+- [x] `src/App.tsx` — new `/set-password` route
+- [x] `src/components/Auth/LoginPage/LoginForm/LoginForm.tsx` — invite success message
 
 ### Dependencies
-- [ ] `nodemailer` + `@types/nodemailer` added to BE `package.json`
-
----
-
-## 9. Follow-up Opportunities
-
-- `POST /employees/:id/resend-invitation` — resend expired invitation
-- Styled HTML email template (MJML / React Email)
-- Queue-based mail sending (BullMQ) for delivery resilience at scale
-- Password change flow for already-authenticated employees
+- [x] `nodemailer` + `@types/nodemailer` added to BE `package.json`
