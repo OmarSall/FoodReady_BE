@@ -1,5 +1,5 @@
 import { PrismaService } from '../database/prisma.service';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaError } from '../database/prisma-error.enum';
@@ -36,11 +36,19 @@ export class EmployeesService {
   } as const;
 
   async createForCompany(companyId: number, employeeDto: CreateEmployeeDto) {
-    try {
-      const inviteToken = randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+    const inviteToken = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
 
-      const employee = await this.prismaService.$transaction(async (tx) => {
+    let employee: {
+      id: number;
+      name: string;
+      email: string;
+      position: EmployeeRole;
+      companyId: number;
+    };
+
+    try {
+      employee = await this.prismaService.$transaction(async (tx) => {
         const company = await tx.company.findUnique({
           where: {
             id: companyId,
@@ -70,13 +78,6 @@ export class EmployeesService {
         });
       });
 
-      this.sendInvitationEmail(
-        employeeDto.email,
-        employeeDto.name,
-        inviteToken,
-      );
-
-      return employee;
     } catch (error) {
       if (
         error instanceof PrismaClientKnownRequestError &&
@@ -86,6 +87,25 @@ export class EmployeesService {
       }
       throw error;
     }
+    try {
+      await this.sendInvitationEmail(
+        employeeDto.email,
+        employeeDto.name,
+        inviteToken,
+      );
+    } catch (mailError) {
+      this.logger.error(
+        `Failed to send invitation email for employee ${employee.id}`,
+        mailError,
+      );
+      await this.prismaService.employee.delete({
+        where: { id: employee.id },
+      });
+      throw new InternalServerErrorException(
+        'Failed to send invitation email. Please try again later.',
+      );
+    }
+    return employee;
   }
 
   async findAllForCompany(companyId: number) {
@@ -190,19 +210,16 @@ export class EmployeesService {
     return { deleted: true };
   }
 
-  private sendInvitationEmail(
+  private async sendInvitationEmail(
     email: string,
     name: string,
     inviteToken: string,
-  ): void {
-    this.mailService
+  ): Promise<void> {
+    await this.mailService
       .sendInvitation({
         to: email,
         employeeName: name,
         inviteToken: inviteToken,
-      })
-      .catch((error: unknown) => {
-        this.logger.error('Failed to send invitation email', error);
-      })
+      });
   }
 }

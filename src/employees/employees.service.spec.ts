@@ -3,6 +3,7 @@ import { EmployeesService } from './employees.service';
 import { PrismaService } from '../database/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { EmployeeRole } from '@prisma/client';
+import { InternalServerErrorException } from '@nestjs/common';
 
 const mockEmployee = {
   id: 1,
@@ -24,8 +25,13 @@ const mockCompany = {
   updatedAt: new Date(),
 };
 
+const deleteMock = jest.fn();
+
 const mockPrismaService = {
   $transaction: jest.fn(),
+  employee: {
+    delete: deleteMock,
+  },
 };
 
 const mockMailService = {
@@ -76,8 +82,6 @@ describe('EmployeesService', () => {
         position: EmployeeRole.EMPLOYEE,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
       expect(mockMailService.sendInvitation).toHaveBeenCalledWith({
         to: 'john@example.com',
         employeeName: 'John Doe',
@@ -85,9 +89,40 @@ describe('EmployeesService', () => {
       });
     });
 
-    it('should still resolve if mailService.sendInvitation throws', async () => {
+    it('should return created employee on success', async () => {
+      mockMailService.sendInvitation.mockResolvedValue(undefined);
+
+      const result = await employeesService.createForCompany(1, {
+        name: 'John Doe',
+        email: 'john@example.com',
+        position: EmployeeRole.EMPLOYEE,
+      });
+
+      expect(result).toEqual(mockEmployee);
+    });
+
+    it('should delete employee and throw InternalServerErrorException if mail fails', async () => {
       mockMailService.sendInvitation.mockRejectedValue(
         new Error('SMTP connection failed'),
+      );
+      deleteMock.mockResolvedValue(undefined);
+
+      await expect(
+        employeesService.createForCompany(1, {
+          name: 'John Doe',
+          email: 'john@example.com',
+          position: EmployeeRole.EMPLOYEE,
+        }),
+      ).rejects.toThrow(InternalServerErrorException);
+
+      expect(deleteMock).toHaveBeenCalledWith({
+        where: { id: mockEmployee.id },
+      });
+    });
+
+    it('should not call delete if transaction fails', async () => {
+      mockPrismaService.$transaction.mockRejectedValue(
+        new Error('DB connection failed'),
       );
 
       await expect(
@@ -96,7 +131,9 @@ describe('EmployeesService', () => {
           email: 'john@example.com',
           position: EmployeeRole.EMPLOYEE,
         }),
-      ).resolves.not.toThrow();
+      ).rejects.toThrow('DB connection failed');
+
+      expect(deleteMock).not.toHaveBeenCalled();
     });
   });
-});
+})
