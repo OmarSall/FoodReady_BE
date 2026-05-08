@@ -4,6 +4,7 @@ import { PrismaService } from '../database/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { EmployeeRole } from '@prisma/client';
 import { InternalServerErrorException } from '@nestjs/common';
+import { MailDeliveryException } from '../mail/mail-delivery.exception';
 
 const mockEmployee = {
   id: 1,
@@ -25,13 +26,8 @@ const mockCompany = {
   updatedAt: new Date(),
 };
 
-const deleteMock = jest.fn();
-
 const mockPrismaService = {
   $transaction: jest.fn(),
-  employee: {
-    delete: deleteMock,
-  },
 };
 
 const mockMailService = {
@@ -101,11 +97,10 @@ describe('EmployeesService', () => {
       expect(result).toEqual(mockEmployee);
     });
 
-    it('should delete employee and throw InternalServerErrorException if mail fails', async () => {
+    it('should throw InternalServerErrorException if mail fails', async () => {
       mockMailService.sendInvitation.mockRejectedValue(
         new Error('SMTP connection failed'),
       );
-      deleteMock.mockResolvedValue(undefined);
 
       await expect(
         employeesService.createForCompany(1, {
@@ -114,13 +109,9 @@ describe('EmployeesService', () => {
           position: EmployeeRole.EMPLOYEE,
         }),
       ).rejects.toThrow(InternalServerErrorException);
-
-      expect(deleteMock).toHaveBeenCalledWith({
-        where: { id: mockEmployee.id },
-      });
     });
 
-    it('should not call delete if transaction fails', async () => {
+    it('should not call sendInvitation if transaction fails', async () => {
       mockPrismaService.$transaction.mockRejectedValue(
         new Error('DB connection failed'),
       );
@@ -133,7 +124,7 @@ describe('EmployeesService', () => {
         }),
       ).rejects.toThrow('DB connection failed');
 
-      expect(deleteMock).not.toHaveBeenCalled();
+      expect(mockMailService.sendInvitation).not.toHaveBeenCalled();
     });
   });
 })

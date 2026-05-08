@@ -11,6 +11,8 @@ import { EmployeeEmailNotFoundException } from './employeeEmail-not-found.except
 import { EmployeeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { MailService } from '../mail/mail.service';
+import { MailDeliveryException } from '../mail/mail-delivery.exception';
+import Mail from 'nodemailer/lib/mailer';
 
 @Injectable()
 export class EmployeesService {
@@ -39,16 +41,8 @@ export class EmployeesService {
     const inviteToken = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
 
-    let employee: {
-      id: number;
-      name: string;
-      email: string;
-      position: EmployeeRole;
-      companyId: number;
-    };
-
     try {
-      employee = await this.prismaService.$transaction(async (tx) => {
+      return await this.prismaService.$transaction(async (tx) => {
         const company = await tx.company.findUnique({
           where: {
             id: companyId,
@@ -59,7 +53,7 @@ export class EmployeesService {
           throw new CompanyNotFoundException(companyId);
         }
 
-        return tx.employee.create({
+        const employee = await tx.employee.create({
           data: {
             name: employeeDto.name,
             email: employeeDto.email,
@@ -76,8 +70,15 @@ export class EmployeesService {
             companyId: true,
           },
         });
-      });
 
+        await this.sendInvitationEmail(
+          employeeDto.email,
+          employeeDto.name,
+          inviteToken,
+        );
+
+        return employee;
+      });
     } catch (error) {
       if (
         error instanceof PrismaClientKnownRequestError &&
@@ -85,27 +86,14 @@ export class EmployeesService {
       ) {
         throw new EmailNotUniqueException();
       }
+
+      if (error instanceof MailDeliveryException) {
+        throw new InternalServerErrorException(
+          'Failed to send invitation email. Please try again later.',
+        );
+      }
       throw error;
     }
-    try {
-      await this.sendInvitationEmail(
-        employeeDto.email,
-        employeeDto.name,
-        inviteToken,
-      );
-    } catch (mailError) {
-      this.logger.error(
-        `Failed to send invitation email for employee ${employee.id}`,
-        mailError,
-      );
-      await this.prismaService.employee.delete({
-        where: { id: employee.id },
-      });
-      throw new InternalServerErrorException(
-        'Failed to send invitation email. Please try again later.',
-      );
-    }
-    return employee;
   }
 
   async findAllForCompany(companyId: number) {
@@ -215,11 +203,15 @@ export class EmployeesService {
     name: string,
     inviteToken: string,
   ): Promise<void> {
-    await this.mailService
-      .sendInvitation({
-        to: email,
-        employeeName: name,
-        inviteToken: inviteToken,
-      });
+    try {
+      await this.mailService
+        .sendInvitation({
+          to: email,
+          employeeName: name,
+          inviteToken: inviteToken,
+        });
+    } catch (error) {
+      throw new MailDeliveryException();
+    }
   }
 }
