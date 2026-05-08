@@ -1,5 +1,5 @@
 import { PrismaService } from '../database/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaError } from '../database/prisma-error.enum';
@@ -10,10 +10,19 @@ import { CompanyNotFoundException } from '../companies/company-not-found.excepti
 import { EmployeeEmailNotFoundException } from './employeeEmail-not-found.exception';
 import { EmployeeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import { MailService } from '../mail/mail.service';
+import { MailDeliveryException } from '../mail/mail-delivery.exception';
+import Mail from 'nodemailer/lib/mailer';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prismaService: PrismaService) {}
+  private readonly logger = new Logger(EmployeesService.name);
+
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly mailService: MailService,
+  ) {
+  }
 
   // Fields that are safe to expose via API responses.
   // This prevents leaking sensitive data such as passwordHash or
@@ -29,6 +38,9 @@ export class EmployeesService {
   } as const;
 
   async createForCompany(companyId: number, employeeDto: CreateEmployeeDto) {
+    const inviteToken = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+
     try {
       return await this.prismaService.$transaction(async (tx) => {
         const company = await tx.company.findUnique({
@@ -41,10 +53,7 @@ export class EmployeesService {
           throw new CompanyNotFoundException(companyId);
         }
 
-        const inviteToken = randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
-
-        return tx.employee.create({
+        const employee = await tx.employee.create({
           data: {
             name: employeeDto.name,
             email: employeeDto.email,
@@ -61,6 +70,14 @@ export class EmployeesService {
             companyId: true,
           },
         });
+
+        await this.sendInvitationEmail(
+          employeeDto.email,
+          employeeDto.name,
+          inviteToken,
+        );
+
+        return employee;
       });
     } catch (error) {
       if (
@@ -68,6 +85,12 @@ export class EmployeesService {
         error.code === PrismaError.UniqueConstraintViolated
       ) {
         throw new EmailNotUniqueException();
+      }
+
+      if (error instanceof MailDeliveryException) {
+        throw new InternalServerErrorException(
+          'Failed to send invitation email. Please try again later.',
+        );
       }
       throw error;
     }
@@ -173,5 +196,22 @@ export class EmployeesService {
       throw new EmployeeNotFoundException(employeeId);
     }
     return { deleted: true };
+  }
+
+  private async sendInvitationEmail(
+    email: string,
+    name: string,
+    inviteToken: string,
+  ): Promise<void> {
+    try {
+      await this.mailService
+        .sendInvitation({
+          to: email,
+          employeeName: name,
+          inviteToken: inviteToken,
+        });
+    } catch (error) {
+      throw new MailDeliveryException();
+    }
   }
 }
